@@ -425,23 +425,23 @@ cocos2d::Data *__usercall cocos2d::FileUtils::DecodeFile@<X0>(__int64 a1@<X0>, _
 }
 ```
 
-where `v13` is the returned bytes, v12 is the encrypted bytes, v4 is some string, so a guess is encrypted byte - some byte = decrypted byte, since we already have encoded and decoded files, we can test this theory. Note we need to open the files in editor like UltraEdit to see the hex values instead of encoded text.
+where `v13` is the returned bytes, v12 is the encrypted bytes, v4 is some string, so a guess is encrypted byte - some byte = decrypted byte, since we already have encrypted and decrypted files, we can test this theory. Note we need to open the files in editor like UltraEdit to see the hex values instead of encoded text.
 
-Take file `TX_UI_0381.atb`
+Take encrypted file `TX_UI_0381.atb`
 
 first few bytes are `81 79 87 6A 3D 3B 9A BB B1 C7 BE C7 88 6D 95 AA`
 
-In the decoded file `TX_UI_0381.atlas`
+In the decrypted file `TX_UI_0381.atlas`
 
 first few bytes are `54 58 5F 55 49 5F 30 33 38 31 2E 70 76 72 2E 63`
 
-First impression is all values in encoded file is larger than decoded file, so our theory might be correct.
+First impression is all values in encrypted file is larger than decrypted file, so our theory might be correct.
 
 Subtracting both files we get `59 55 4E 4D 49 41 4F 32 30 31 34 52 45 53 59 55 4E 4D...`
 
 Repeating values, which is a good sign, take `59 55 4E 4D 49 41 4F 32 30 31 34 52 45 53` and open it in utf-8 encoding we get the string `YUNMIAO2014RES`
 
-Now we can just create a python script to decode all `atb` and `jn` files.
+Now we can just create a python script to decrypt all `atb` and `jn` files.
 
 ```python
 secretKey = b'\x59\x55\x4E\x4D\x49\x41\x4F\x32\x30\x31\x34\x52\x45\x53' # "YUNMIAO2014RES"
