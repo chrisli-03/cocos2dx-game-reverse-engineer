@@ -364,3 +364,103 @@ Note: if the file you created is significantly larger than original file, it mig
 #### Follow-up
 
 Although everything is working the way we wanted, is there a way to modify the lua files without connecting phone to pc, running `frida-server`, executing a script and all that stuff? Would it be possible to make this process more simple like inject the modified lua files back to the apk and repack?
+
+#### Update: Atlas and Json files for animation
+
+Atlas and json files are used to create skeleton animation in cocos2d-x, but they are encrypted differently than lua and images.
+
+We can get `atb` and `jn` files which are the encrypted files, but without knowing how to decode them they can't be used. We can also get the decrypted file with similar hook we used to get decrypted lua files, but it can only load files that are loaded, how do we get all the assets?
+
+Back traced some function in IDA and found this function `cocos2d::FileUtils::DecodeFile`
+
+```
+cocos2d::Data *__usercall cocos2d::FileUtils::DecodeFile@<X0>(__int64 a1@<X0>, __int64 a2@<X1>, const char *a3@<X2>, cocos2d::Data *a4@<X8>)
+{
+  const char *v4; // x21
+  cocos2d::FileUtils *v8; // x0
+  __int64 v9; // x0
+  __int64 v10; // x0
+  __int64 v11; // x22
+  _BYTE *v12; // x25
+  _BYTE *v13; // x23
+  int v14; // w19
+  __int64 v15; // x20
+  int v16; // w2
+  unsigned __int64 v17; // x0
+  unsigned __int64 v18; // x0
+  size_t byte_count[2]; // [xsp+58h] [xbp-8h] BYREF
+
+  v4 = a3;
+  if ( !a3 )
+    v4 = *(a1 + 184);
+  *(a1 + 192) = 0;
+  v8 = cocos2d::Data::Data(a4);
+  *byte_count = 0LL;
+  v9 = cocos2d::FileUtils::getInstance(v8);
+  v10 = (*(*v9 + 48LL))(v9, a2, "rb", byte_count);
+  v11 = *byte_count;
+  v12 = v10;
+  v13 = malloc(byte_count[0]);
+  if ( v11 > 0 )
+  {
+    v14 = *(a1 + 192);
+    v15 = 0LL;
+    v16 = v14;
+    do
+    {
+      v13[v15] = v12[v15] - v4[v16];
+      ++v15;
+      v17 = strlen(v4);
+      v18 = (v14 + 1) - (v14 + 1) / v17 * v17;
+      *(a1 + 192) = v18;
+      v16 = v18;
+      v14 = v18;
+    }
+    while ( v11 != v15 );
+    v13 += v11;
+  }
+  free(v12);
+  cocos2d::Data::fastSet(a4, &v13[-v11], *byte_count);
+  return a4;
+}
+```
+
+where `v13` is the returned bytes, v12 is the encrypted bytes, v4 is some string, so a guess is encrypted byte - some byte = decrypted byte, since we already have encoded and decoded files, we can test this theory. Note we need to open the files in editor like UltraEdit to see the hex values instead of encoded text.
+
+Take file `TX_UI_0381.atb`
+
+first few bytes are `81 79 87 6A 3D 3B 9A BB B1 C7 BE C7 88 6D 95 AA`
+
+In the decoded file `TX_UI_0381.atlas`
+
+first few bytes are `54 58 5F 55 49 5F 30 33 38 31 2E 70 76 72 2E 63`
+
+First impression is all values in encoded file is larger than decoded file, so our theory might be correct.
+
+Subtracting both files we get `59 55 4E 4D 49 41 4F 32 30 31 34 52 45 53 59 55 4E 4D...`
+
+Repeating values, which is a good sign, take `59 55 4E 4D 49 41 4F 32 30 31 34 52 45 53` and open it in utf-8 encoding we get the string `YUNMIAO2014RES`
+
+Now we can just create a python script to decode all `atb` and `jn` files.
+
+```python
+secretKey = b'\x59\x55\x4E\x4D\x49\x41\x4F\x32\x30\x31\x34\x52\x45\x53' # "YUNMIAO2014RES"
+with open(path + '/' + filename, "r+b") as oriFile:
+    mm = mmap.mmap(oriFile.fileno(), 0)
+    ...
+    elif filename.endswith('.atb') or filename.endswith('.jn'):
+        iterator = 0
+    append = '.atlas'
+        if filename.endswith('.jn'):
+            append = '.json'
+        with open(output + '/' + filename.replace(".atb", "").replace(".jn", "") + append, "wb") as newFile:
+            for byte in mm:
+                 encodedByte = int.from_bytes(byte, "big")
+                 keyByte = secretKey[iterator]
+                 decodedByte = (encodedByte - keyByte).to_bytes(1, byteorder='big')
+                 newFile.write(decodedByte)
+                 iterator = iterator + 1
+                 if iterator >= len(secretKey):
+                      iterator = 0
+```
+
