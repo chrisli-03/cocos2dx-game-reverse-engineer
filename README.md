@@ -11,7 +11,7 @@ Requirements:
 
 First lets unzip the apk, in assets/pubsrc we get a bunch of .luax files, opening them with text editor shows encoded strings, these are most likely the encoded lua files we are looking for, but they are not encoded using xxtea method because every files starts with different strings, therefore we can't decode them directly without knowing how they are encoded.
 
- ![1](E:\git\reverse-engineering-notes\1.png)
+ ![1](1.png)
 
 #### Step 2
 
@@ -19,7 +19,7 @@ Now that we have the files, we need to know how to decode them, the application 
 
 In lib\arm64-v8a we have the .so file libcocos2dlua.so, open that in IDA64. Searching in Exports tab for 'decode', one of the function is `decodeLua`, this could be what we are looking for, lets look into that.
 
-![2](E:\git\reverse-engineering-notes\2.png)
+![2](2.png)
 
 The pseudo code IDA generates for us is 
 
@@ -93,7 +93,7 @@ Before we start we need to do some preparation work.
 
 6. At this point debugger is already attached, but the application is still paused, we need to resume it. First we need to know what port it's listening at, open Android Device Manager.
 
-   ![3](E:\git\reverse-engineering-notes\3.png)
+   ![3](3.png)
 
    Here my application is listening on port 8663
 
@@ -230,11 +230,11 @@ After `frida-server` is running, we can run `python main.py` to start.
 
 Success! We dumped all lua files from this application.
 
-![4](E:\git\reverse-engineering-notes\4.png)
+![4](4.png)
 
 Lets open one of them.
 
-![5](E:\git\reverse-engineering-notes\5.png)
+![5](5.png)
 
 Fully decoded as we wanted.
 
@@ -246,7 +246,7 @@ What about assets? let's go back to our unzipped folder and navigate to assets/r
 
 Opening one in text editor
 
-![6](E:\git\reverse-engineering-notes\6.png)
+![6](6.png)
 
 There are two types, one start with `is`, the other starts with `isnvsedq`
 
